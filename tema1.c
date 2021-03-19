@@ -67,7 +67,7 @@ HashMap mapInit()
 	map.items = (HashItem *)calloc(MAP_INITIAL_SIZE, sizeof(HashItem));
 	if (map.items == NULL)
 	{
-		fprintf(stdout, "Malloc err 80.\n");
+		//fprintf(stdout, "Malloc err 80.\n");
 		exit(12);
 	}
 
@@ -81,7 +81,7 @@ HashItem hashItemInit(char key[KEY_SIZE], char *value)
 	item.value = (char *)calloc(sizeof(char), strlen(value) + 1);
 	if (item.value == NULL)
 	{
-		fprintf(stdout, "Malloc err 91\n");
+		//fprintf(stdout, "Malloc err 91\n");
 		exit(12);
 	}
 
@@ -164,7 +164,7 @@ int handleDInput(HashMap *map, char *DInput)
 		val = (char *)calloc(1, sizeof(char));
 		if (val == NULL)
 		{
-			fprintf(stdout, "Malloc err 147.\n");
+			//fprintf(stdout, "Malloc err 147.\n");
 			return 12;
 		}
 
@@ -236,7 +236,7 @@ int defineWithoutValue(HashMap *map, char *key)
 	char *val = (char *)calloc(1, 2);
 	if (val == NULL)
 	{
-		fprintf(stderr, "MALLLOC ERR 234\n");
+		//fprintf(stderr, "MALLLOC ERR 234\n");
 		return 12;
 	}
 	strcpy(val, "");
@@ -517,7 +517,7 @@ int quoteHandler(HashMap *map, char *buffer, char *startPos, char **endPos, char
 		*res = (char *)calloc(sizeof(char), strlen(startPos) + 1);
 		// save in res the content between " "
 		memcpy(*res, startPos + 1, *endPos - (startPos + 1));
-		// fprintf(stderr, "res: %s\n", res);
+		// //fprintf(stderr, "res: %s\n", res);
 
 		// save in endBuffer the content after ""
 		strcpy(endBuffer, *endPos);
@@ -657,7 +657,7 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **di
 		char *bufferAux = (char *)calloc(1, strlen(buffer) + 1);
 		if (bufferAux == NULL)
 		{
-			fprintf(stderr, "MALLOC ERR 387\n");
+			//fprintf(stderr, "MALLOC ERR 387\n");
 
 			exit(12);
 		}
@@ -721,7 +721,7 @@ int initArgs(
 			char *dir_path = (char *)calloc(1, 50);
 			if (dir_path == NULL)
 			{
-				fprintf(stderr, "Malloc err 450.\n");
+				//fprintf(stderr, "Malloc err 450.\n");
 				return 12;
 			}
 			(*dir_pathsCounter)++;
@@ -736,7 +736,7 @@ int initArgs(
 			char *dir_path = (char *)calloc(1, 50);
 			if (dir_path == NULL)
 			{
-				fprintf(stderr, "Malloc err 462.\n");
+				//fprintf(stderr, "Malloc err 462.\n");
 				return 12;
 			}
 			(*dir_pathsCounter)++;
@@ -750,7 +750,7 @@ int initArgs(
 			*output_file = fopen(argv[i + 1], "w");
 			if (output_file == NULL)
 			{
-				fprintf(stdout, "Input file <%s> failed to open.\n", current);
+				//fprintf(stdout, "Input file <%s> failed to open.\n", current);
 			}
 			*isOutputFile = 1;
 			i++;
@@ -760,33 +760,35 @@ int initArgs(
 			*output_file = fopen(current + 2, "w");
 			if (output_file == NULL)
 			{
-				fprintf(stdout, "Input file <%s> failed to open.\n", current);
+				//fprintf(stdout, "Input file <%s> failed to open.\n", current);
 			}
+		}
+		else if (*isInputFile == 0)
+		{
+			*input_file = fopen(current, "r");
+			if (input_file == NULL)
+			{
+				//fprintf(stdout, "Input file <%s> failed to open.\n", current);
+				exit(0);
+			} 
+
+			*isInputFile = 1;
+
+		} 
+		else if (*isOutputFile == 0)
+		{
+			*output_file = fopen(current, "w");
+			if (output_file == NULL)
+			{
+				//fprintf(stdout, "Input file <%s> failed to open.\n", current);
+				exit(0);
+			} 
+			
+			*isOutputFile = 1;
 		}
 		else
 		{
-			if (*isInputFile == 0)
-			{
-				*input_file = fopen(current, "r");
-				if (input_file == NULL)
-				{
-					fprintf(stdout, "Input file <%s> failed to open.\n", current);
-					exit(0);
-				}
-
-				*isInputFile = 1;
-			}
-			else if (*isOutputFile == 0)
-			{
-				*output_file = fopen(current, "w");
-				if (output_file == NULL)
-				{
-					fprintf(stdout, "Input file <%s> failed to open.\n", current);
-					exit(0);
-				}
-
-				*isOutputFile = 1;
-			}
+			return 2;
 		}
 	}
 
@@ -805,7 +807,7 @@ int main(int argc, char *argv[])
 	char **dir_paths = (char **)calloc(50, sizeof(char *));
 	if (dir_paths == NULL)
 	{
-		fprintf(stderr, "Malloc err 509.\n");
+		//fprintf(stderr, "Malloc err 509.\n");
 		return 12;
 	}
 
@@ -814,7 +816,7 @@ int main(int argc, char *argv[])
 		dir_paths[i] = (char *)calloc(50, sizeof(char));
 		if (dir_paths[i] == NULL)
 		{
-			fprintf(stderr, "Malloc err 515\n");
+			//fprintf(stderr, "Malloc err 515\n");
 			return 12;
 		}
 	}
@@ -822,10 +824,16 @@ int main(int argc, char *argv[])
 	strcpy(dir_paths[0], "./_test/inputs/");
 	int dir_pathsCounter = 0;
 
-	if (initArgs(argc, argv, &map, &input_file, &output_file, &isInputFile, &isOutputFile, dir_paths, &dir_pathsCounter) == 12)
+	int res = initArgs(argc, argv, &map, &input_file, &output_file, &isInputFile, &isOutputFile, dir_paths, &dir_pathsCounter);
+	if (res == 12)
 	{
 		return 12;
 	}
+
+	if (isInputFile && input_file == stdin) {
+		return 2;
+	}
+
 
 	if (isInputFile)
 	{
@@ -911,7 +919,7 @@ void replace(
 	char *aux = (char *)calloc(1, BUF_LEN + 1);
 	if (aux == NULL)
 	{
-		fprintf(stdout, "Malloc err 42.\n");
+		//fprintf(stdout, "Malloc err 42.\n");
 		exit(12);
 	}
 
