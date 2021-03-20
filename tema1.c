@@ -56,8 +56,10 @@ int initArgs(
 	char **dir_paths,
 	int *dir_pathsCounter);
 int replace(char *buffer, char *toReplace, char *replacement);
-int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **dir_paths, int dir_pathsCounter);
-int includeHandler(HashMap *map, FILE *output_file, char **dir_paths, int dir_pathsCounter);
+int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map,
+	char **dir_paths, int dir_pathsCounter);
+int includeHandler(HashMap *map, FILE *output_file, char **dir_paths,
+	int dir_pathsCounter);
 
 HashMap mapInit(void)
 {
@@ -341,7 +343,8 @@ int undefineHandler(HashMap *map)
 	return 1;
 }
 
-int includeHandler(HashMap *map, FILE *output_file, char **dir_paths, int dir_pathsCounter)
+int includeHandler(HashMap *map, FILE *output_file, char **dir_paths,
+	int dir_pathsCounter)
 {
 	int foundHeader = 0, len; // Found the include file.
 	char *fileNameBuffer, *end, *fileName;
@@ -365,7 +368,8 @@ int includeHandler(HashMap *map, FILE *output_file, char **dir_paths, int dir_pa
 	if (header_file != NULL) {
 		foundHeader = 1;
 		// write the content of the header
-		if (handleInputFile(header_file, output_file, map, dir_paths, dir_pathsCounter) == -ENOMEM)
+		if (handleInputFile(header_file, output_file, map, dir_paths,
+			dir_pathsCounter) == -ENOMEM)
 			return -ENOMEM;
 
 		fclose(header_file);
@@ -387,7 +391,8 @@ int includeHandler(HashMap *map, FILE *output_file, char **dir_paths, int dir_pa
 			header_file = fopen(path, "r");
 			if (header_file != NULL) {
 				foundHeader = 1;
-				handleInputFile(header_file, output_file, map, dir_paths, dir_pathsCounter);
+				handleInputFile(header_file, output_file,
+					map, dir_paths, dir_pathsCounter);
 				fclose(header_file);
 			}
 
@@ -464,7 +469,8 @@ int ifndefHandler(HashMap *map)
 		return 0;
 }
 
-int quoteHandler(HashMap *map, char *buffer, char *startPos, char **endPos, char *startBuffer, char *endBuffer, char **res)
+int quoteHandler(HashMap *map, char *buffer, char *startPos, char **endPos,
+	char *startBuffer, char *endBuffer, char **res)
 {
 	memcpy(startBuffer, buffer, startPos - buffer);
 	startBuffer[startPos - buffer] = '\0';
@@ -502,7 +508,8 @@ int quoteHandler(HashMap *map, char *buffer, char *startPos, char **endPos, char
 
 			endres = search(map, endtok);
 			if (endres != NULL) {
-				if (replace(endBuffer, endtok, endres) == -ENOMEM)
+				if (replace(endBuffer, endtok, endres)
+					== -ENOMEM)
 					return -ENOMEM;
 			}
 
@@ -525,14 +532,16 @@ int defineAux(HashMap *map, FILE *input_file, char *buffer)
 	return 1;
 }
 
-int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **dir_paths, int dir_pathsCounter)
+int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map,
+	char **dir_paths, int dir_pathsCounter)
 {
 	char buffer[BUF_LEN];
 	int conditionValid = 1;
 
 	while (fgets(buffer, BUF_LEN - 1, input_file)) {
 		int isDirective = 1, skipLine = 0, directiveInConditionValid, i; // To remember if there is a directive in this line.
-		char *startPos, *startBuffer, *endBuffer, *res, *endPos, *bufferAux, *tok;
+		char *startPos, *startBuffer, *endBuffer, *res,
+		*endPos, *bufferAux, *tok;
 		// Skip the print of the line.
 
 		buffer[strcspn(buffer, "\n")] = 0;
@@ -548,7 +557,8 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **di
 
 				skipLine = 1; // This line won't be printed.
 
-				bufferAux = (char *) calloc(1, strlen(buffer) + 1);
+				bufferAux = (char *) calloc(1,
+					strlen(buffer) + 1);
 				if (bufferAux == NULL)
 					return -ENOMEM;
 
@@ -562,7 +572,8 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **di
 					if (!directiveInConditionValid)
 						continue;
 
-					res = defineAux(map, input_file, buffer);
+					res = defineAux(map, input_file,
+					 buffer);
 
 					if (res == -ENOMEM)
 						return -ENOMEM;
@@ -585,7 +596,9 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **di
 					if (!directiveInConditionValid)
 						continue;
 
-					res = includeHandler(map, output_file, dir_paths, dir_pathsCounter);
+					res = includeHandler(map,
+						output_file, dir_paths,
+						dir_pathsCounter);
 					if (res == -ENOMEM)
 						return -ENOMEM;
 					else if (res == 2)
@@ -596,16 +609,19 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **di
 
 					conditionValid = ifHandler(map);
 				} else if (strcmp(type, ELSE_STR) == 0) {
-					// fprintf(stderr, "<>breakpoint<1> : condition: %d\n", conditionValid);
-					conditionValid = elseHandler(conditionValid);
-					directiveInConditionValid = conditionValid;
-					// fprintf(stderr, "<>breakpoint<2> : condition: %d\n", conditionValid);
+					conditionValid = elseHandler(
+						conditionValid);
+					directiveInConditionValid =
+						conditionValid;
 				} else if (strcmp(type, ELIF_STR) == 0) {
-					conditionValid = elifHandler(map, conditionValid);
-					directiveInConditionValid = conditionValid;
+					conditionValid = elifHandler(map,
+						conditionValid);
+					directiveInConditionValid =
+						conditionValid;
 				} else if (strcmp(type, ENDIF_STR) == 0) {
 					conditionValid = 1;
-					directiveInConditionValid = conditionValid;
+					directiveInConditionValid =
+						conditionValid;
 				} else if (strcmp(type, IFDEF_STR) == 0) {
 					if (!directiveInConditionValid)
 						continue;
@@ -624,7 +640,8 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **di
 			}
 		}
 
-		if (skipLine || strcmp(buffer, "") == 0 || conditionValid == 0)
+		if (skipLine || strcmp(buffer, "") == 0 ||
+			conditionValid == 0)
 			continue;
 		startPos = strstr(buffer, "\"");
 
@@ -637,7 +654,8 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **di
 			return -ENOMEM;
 
 		if (startPos) {
-			if (quoteHandler(map, buffer, startPos, &endPos, startBuffer, endBuffer, &res) == -ENOMEM)
+			if (quoteHandler(map, buffer, startPos, &endPos,
+				startBuffer, endBuffer, &res) == -ENOMEM)
 				return -ENOMEM;
 		}
 
@@ -784,7 +802,8 @@ int main(int argc, char *argv[])
 	strcpy(dir_paths[0], "./_test/inputs/");
 	dir_pathsCounter = 0;
 
-	res = initArgs(argc, argv, &map, &input_file, &output_file, &isInputFile, &isOutputFile, dir_paths, &dir_pathsCounter);
+	res = initArgs(argc, argv, &map, &input_file, &output_file,
+		&isInputFile, &isOutputFile, dir_paths, &dir_pathsCounter);
 	if (res == -ENOMEM)
 		return -ENOMEM;
 
@@ -793,14 +812,16 @@ int main(int argc, char *argv[])
 
 	if (isInputFile) {
 		if (isOutputFile) {
-			int res = handleInputFile(input_file, output_file, &map, dir_paths, dir_pathsCounter);
+			int res = handleInputFile(input_file, output_file,
+				&map, dir_paths, dir_pathsCounter);
 
 			if (res == -ENOMEM)
 				return -ENOMEM;
 			else if (res == 2)
 				return 2;
 		} else {
-			int res = handleInputFile(input_file, stdout, &map, dir_paths, dir_pathsCounter);
+			int res = handleInputFile(input_file, stdout, &map,
+				dir_paths, dir_pathsCounter);
 
 			if (res == -ENOMEM)
 				return -ENOMEM;
@@ -809,7 +830,8 @@ int main(int argc, char *argv[])
 		}
 	} else {
 		if (isOutputFile) {
-			int res = handleInputFile(stdin, output_file, &map, dir_paths, dir_pathsCounter);
+			int res = handleInputFile(stdin, output_file, &map,
+				dir_paths, dir_pathsCounter);
 
 			if (res == -ENOMEM)
 				return -ENOMEM;
@@ -817,7 +839,8 @@ int main(int argc, char *argv[])
 				return 2;
 
 		} else {
-			int res = handleInputFile(stdin, stdout, &map, dir_paths, dir_pathsCounter);
+			int res = handleInputFile(stdin, stdout, &map,
+				dir_paths, dir_pathsCounter);
 
 			if (res == -ENOMEM)
 				return -ENOMEM;
