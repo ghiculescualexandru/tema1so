@@ -371,7 +371,10 @@ int multiLineDefineHandler(HashMap *map, FILE *input_file, char *buffer)
 			valBuffer = strtok(NULL, "\\");
 			continue;
 		}
-		removeWhiteSpaces(valBuffer);
+		if (removeWhiteSpaces(valBuffer) == ENOMEM)
+		{
+			return ENOMEM;
+		}
 
 		strcat(val, valBuffer);
 		strcat(val, " ");
@@ -379,7 +382,11 @@ int multiLineDefineHandler(HashMap *map, FILE *input_file, char *buffer)
 		valBuffer = strtok(NULL, "\\");
 	}
 	val[strlen(val) - 1] = '\0';
-	defineWithValue(map, key, val);
+	if (defineWithValue(map, key, val) == ENOMEM)
+	{
+		return ENOMEM;
+	}
+
 	free(multiLineBuffer);
 	free(val);
 
@@ -665,7 +672,11 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **di
 					// if (isMultiLine)
 					if (buffer[strlen(buffer) - 1] == '\\')
 					{
-						multiLineDefineHandler(map, input_file, buffer);
+						if (multiLineDefineHandler(map, input_file, buffer) == ENOMEM)
+						{
+							return ENOMEM;
+						}
+
 						free(bufferAux);
 						continue;
 					}
@@ -786,7 +797,10 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **di
 
 		if (startPos)
 		{
-			quoteHandler(map, buffer, startPos, &endPos, startBuffer, endBuffer, &res);
+			if (quoteHandler(map, buffer, startPos, &endPos, startBuffer, endBuffer, &res) == ENOMEM)
+			{
+				return ENOMEM;
+			}
 		}
 
 		bufferAux = (char *)calloc(1, strlen(buffer) + 1);
@@ -860,7 +874,10 @@ int initArgs(
 		else if (strncmp(current, D_ARGUMENT, 2) == 0)
 		{
 			char *DInput = current + 2;
-			handleDInput(map, DInput);
+			if (handleDInput(map, DInput) == ENOMEM)
+			{
+				return ENOMEM;
+			}
 		}
 		else if (strcmp(current, I_ARGUMENT) == 0)
 		{
