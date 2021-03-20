@@ -2,6 +2,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <errno.h>
+
 #define MAP_MAX_SIZE 30
 #define MAP_INITIAL_SIZE 10
 
@@ -54,7 +56,7 @@ int initArgs(
 		int *isOutputFile,
 		char **dir_paths,
 		int *dir_pathsCounter);
-void replace(char *buffer, char *toReplace, char *replacement);
+int replace(char *buffer, char *toReplace, char *replacement);
 int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **dir_paths, int dir_pathsCounter);
 int includeHandler(HashMap *map, FILE *output_file, char **dir_paths, int dir_pathsCounter);
 
@@ -65,30 +67,25 @@ HashMap mapInit()
 	map.maxSize = MAP_MAX_SIZE;
 	map.currentSize = 0;
 	map.items = (HashItem *)calloc(MAP_INITIAL_SIZE, sizeof(HashItem));
-	if (map.items == NULL)
-	{
-		//fprintf(stdout, "Malloc err 80.\n");
-		exit(12);
-	}
 
 	return map;
 }
 
-HashItem hashItemInit(char key[KEY_SIZE], char *value)
+int hashItemInit(HashItem *item, char key[KEY_SIZE], char *value)
 {
-	HashItem item;
+	// HashItem item;
 
-	item.value = (char *)calloc(sizeof(char), strlen(value) + 1);
-	if (item.value == NULL)
+	item->value = (char *)calloc(sizeof(char), strlen(value) + 1);
+	if (item->value == NULL)
 	{
 		//fprintf(stdout, "Malloc err 91\n");
-		exit(12);
+		return ENOMEM;
 	}
 
-	strcpy(item.key, key);
-	strcpy(item.value, value);
+	strcpy(item->key, key);
+	strcpy(item->value, value);
 
-	return item;
+	return 1;
 }
 
 void insert(HashMap *map, HashItem item)
@@ -165,7 +162,7 @@ int handleDInput(HashMap *map, char *DInput)
 		if (val == NULL)
 		{
 			//fprintf(stdout, "Malloc err 147.\n");
-			return 12;
+			return ENOMEM;
 		}
 
 		strcpy(val, "");
@@ -173,7 +170,12 @@ int handleDInput(HashMap *map, char *DInput)
 
 	if (search(map, key) == NULL)
 	{
-		HashItem newItem = hashItemInit(key, val);
+		HashItem newItem;
+		if (hashItemInit(&newItem, key, val) == 12)
+		// if (newItem.value == NULL)
+		{
+			return ENOMEM;
+		}
 		insert(map, newItem);
 	}
 
@@ -197,7 +199,7 @@ int defineWithValue(HashMap *map, char *key, char *val)
 	char *valBuffer = (char *)calloc(1, BUF_LEN);
 	if (valBuffer == NULL)
 	{
-		return 12;
+		return ENOMEM;
 	}
 	strcpy(valBuffer, val);
 
@@ -209,7 +211,10 @@ int defineWithValue(HashMap *map, char *key, char *val)
 		char *replacement = search(map, tok);
 		if (replacement != NULL)
 		{
-			replace(val, tok, replacement);
+			if (replace(val, tok, replacement) == ENOMEM)
+			{
+				return ENOMEM;
+			}
 		}
 		tok = strtok(NULL, ALL_DEL);
 	}
@@ -219,7 +224,13 @@ int defineWithValue(HashMap *map, char *key, char *val)
 	// other map values if any)
 	if (search(map, key) == NULL)
 	{
-		HashItem newItem = hashItemInit(key, val);
+		// HashItem newItem = hashItemInit(key, val);
+		HashItem newItem;
+		if (hashItemInit(&newItem, key, val) == 12)
+		// if (newItem.value == NULL)
+		{
+			return ENOMEM;
+		}
 		insert(map, newItem);
 	}
 	else
@@ -237,7 +248,7 @@ int defineWithoutValue(HashMap *map, char *key)
 	if (val == NULL)
 	{
 		//fprintf(stderr, "MALLLOC ERR 234\n");
-		return 12;
+		return ENOMEM;
 	}
 	strcpy(val, "");
 
@@ -245,7 +256,13 @@ int defineWithoutValue(HashMap *map, char *key)
 	// if the key is not defined already
 	if (search(map, key) == NULL)
 	{
-		HashItem newItem = hashItemInit(key, val);
+		// HashItem newItem = hashItemInit(key, val);
+		// if (newItem.value == NULL)
+		HashItem newItem;
+		if (hashItemInit(&newItem, key, val) == 12)
+		{
+			return ENOMEM;
+		}
 		insert(map, newItem);
 	}
 
@@ -265,16 +282,16 @@ int defineHandler(HashMap *map)
 	// check if define has a key or the item is just defined
 	if (val)
 	{
-		if (defineWithValue(map, key, val) == 12)
+		if (defineWithValue(map, key, val) == ENOMEM)
 		{
-			return 12;
+			return ENOMEM;
 		}
 	}
 	else
 	{
-		if (defineWithoutValue(map, key) == 12)
+		if (defineWithoutValue(map, key) == ENOMEM)
 		{
-			return 12;
+			return ENOMEM;
 		}
 	}
 
@@ -284,6 +301,10 @@ int defineHandler(HashMap *map)
 int removeWhiteSpaces(char *buffer)
 {
 	char *aux = (char *)calloc(1, strlen(buffer) + 1);
+	if (aux == NULL) {
+		return ENOMEM;
+	}
+
 	strcpy(aux, buffer);
 	int i = 0;
 	for (; i < strlen(buffer); i++)
@@ -300,6 +321,10 @@ int removeWhiteSpaces(char *buffer)
 int multiLineDefineHandler(HashMap *map, FILE *input_file, char *buffer)
 {
 	char *multiLineBuffer = (char *)calloc(1, BUF_LEN);
+	if (multiLineBuffer == NULL)
+	{
+		return ENOMEM;
+	}
 	strcpy(multiLineBuffer, buffer);
 
 	while (1)
@@ -308,8 +333,11 @@ int multiLineDefineHandler(HashMap *map, FILE *input_file, char *buffer)
 		buffer[strcspn(buffer, "\n")] = 0;
 
 		strcat(multiLineBuffer, buffer);
-		char *isMultiLine = strstr(buffer, "\\");
-		if (!isMultiLine)
+		// fprintf(stderr, "buffer: <%s>\n", buffer);
+		// fprintf(stderr, "end: <%c>\n", buffer[strlen(buffer) - 1]);
+		if (buffer[strlen(buffer) - 1] != '\\')
+		// char *isMultiLine = strstr(buffer, "\\");
+		// if (!isMultiLine)
 		{
 			break;
 		}
@@ -318,6 +346,10 @@ int multiLineDefineHandler(HashMap *map, FILE *input_file, char *buffer)
 	char *tok = strtok(multiLineBuffer, ALL_DEL);
 	char *key = strtok(NULL, SPACE_DEL);
 	char *val = (char *)calloc(1, 50);
+	if (val == NULL)
+	{
+		return ENOMEM;
+	}
 
 	char *valBuffer = strtok(NULL, SPACE_DEL);
 	while (valBuffer != NULL)
@@ -334,6 +366,7 @@ int multiLineDefineHandler(HashMap *map, FILE *input_file, char *buffer)
 
 		valBuffer = strtok(NULL, "\\");
 	}
+	val[strlen(val) - 1] = '\0';
 	defineWithValue(map, key, val);
 	free(multiLineBuffer);
 	free(val);
@@ -367,7 +400,7 @@ int includeHandler(HashMap *map, FILE *output_file, char **dir_paths, int dir_pa
 	char *fileName = (char *)calloc(len + 1, sizeof(char));
 	if (fileName == NULL)
 	{
-		return 12;
+		return ENOMEM;
 	}
 	memcpy(fileName, fileNameBuffer, len);
 
@@ -377,9 +410,9 @@ int includeHandler(HashMap *map, FILE *output_file, char **dir_paths, int dir_pa
 	{
 		foundHeader = 1;
 		// write the content of the header
-		if (handleInputFile(header_file, output_file, map, dir_paths, dir_pathsCounter) == 12)
+		if (handleInputFile(header_file, output_file, map, dir_paths, dir_pathsCounter) == ENOMEM)
 		{
-			return 12;
+			return ENOMEM;
 		}
 		fclose(header_file);
 	}
@@ -390,6 +423,10 @@ int includeHandler(HashMap *map, FILE *output_file, char **dir_paths, int dir_pa
 		for (int j = 0; j <= dir_pathsCounter; j++)
 		{
 			char *path = (char *)calloc(1, 50);
+			if (path == NULL)
+			{
+				return ENOMEM;
+			}
 			strcpy(path, dir_paths[j]);
 			strcat(path, fileName);
 
@@ -515,6 +552,10 @@ int quoteHandler(HashMap *map, char *buffer, char *startPos, char **endPos, char
 	if (*endPos)
 	{
 		*res = (char *)calloc(sizeof(char), strlen(startPos) + 1);
+		if (res == NULL)
+		{
+			return ENOMEM;
+		}
 		// save in res the content between " "
 		memcpy(*res, startPos + 1, *endPos - (startPos + 1));
 		// //fprintf(stderr, "res: %s\n", res);
@@ -525,6 +566,10 @@ int quoteHandler(HashMap *map, char *buffer, char *startPos, char **endPos, char
 		// replace in the content after "" all occurences
 		// with hashmap values
 		char *endendAux = (char *)calloc(1, strlen(endBuffer) + 1);
+		if (endendAux == NULL)
+		{
+			return ENOMEM;
+		}
 		strcpy(endendAux, endBuffer);
 		char *endtok = strtok(endendAux, ALL_DEL);
 		while (endtok != NULL)
@@ -532,7 +577,10 @@ int quoteHandler(HashMap *map, char *buffer, char *startPos, char **endPos, char
 			char *endres = search(map, endtok);
 			if (endres != NULL)
 			{
-				replace(endBuffer, endtok, endres);
+				if(replace(endBuffer, endtok, endres) == ENOMEM)
+				{
+					return ENOMEM;
+				}
 			}
 
 			endtok = strtok(NULL, ALL_DEL);
@@ -549,52 +597,84 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **di
 
 	while (fgets(buffer, BUF_LEN - 1, input_file))
 	{
+		// fprintf(stderr, "======================\n");
+		// fprintf(stderr, "at line: %s", buffer);
+		// fprintf(stderr, "condition: %s\n", (conditionValid) ? "true" : "false");
+		// for (int i = 0; i < map->currentSize; i++) {
+		// 	fprintf(stderr, "%d. (key,value) : (%s, %s)\n", i + 1, map->items[i].key, map->items[i].value);
+		// }
+		// fprintf(stderr, "\n");
+
 		buffer[strcspn(buffer, "\n")] = 0;
 
 		int isDirective = 1; // To remember if there is a directive in this line.
 		int skipLine = 0;		 // Skip the print of the line.
 		// int foundHeader = 0; // Found an include directive.
 
+		int directiveInConditionValid = conditionValid;
+
 		for (int i = 0; i < strlen(buffer); i++)
 		{
+
+
 			char currChar = buffer[i];
 			if (currChar == HASH && isDirective)
 			{
 				skipLine = 1; // This line won't be printed.
 
 				char *bufferAux = (char *)calloc(1, strlen(buffer) + 1);
+				if (bufferAux == NULL)
+				{
+					return ENOMEM;
+				}
 				strcpy(bufferAux, buffer);
 				char *afterHashtag = bufferAux + 1;
 
 				char *type = strtok(afterHashtag, SPACE_DEL);
 				if (strcmp(type, DEFINE_STR) == 0)
 				{
-					char *isMultiLine = strstr(buffer, "\\");
-					if (isMultiLine)
+					if (!directiveInConditionValid)
+					{
+						continue;
+					}
+
+					// char *isMultiLine = strstr(buffer, "\\");
+					// if (isMultiLine)
+					if (buffer[strlen(buffer) - 1] == '\\')
 					{
 						multiLineDefineHandler(map, input_file, buffer);
 						free(bufferAux);
 						continue;
 					}
 
-					if (defineHandler(map) == 12)
+					if (defineHandler(map) == ENOMEM)
 					{
-						return 12;
+						return ENOMEM;
 					}
 				}
 				else if (strcmp(type, UNDEF_STR) == 0)
 				{
-					if (undefineHandler(map) == 12)
+					if (!directiveInConditionValid)
 					{
-						return 12;
+						continue;
+					}
+
+					if (undefineHandler(map) == ENOMEM)
+					{
+						return ENOMEM;
 					}
 				}
 				else if (strcmp(type, INCLUDE_STR) == 0)
 				{
-					int res = includeHandler(map, output_file, dir_paths, dir_pathsCounter);
-					if (res == 12)
+					if (!directiveInConditionValid)
 					{
-						return 12;
+						continue;
+					}
+
+					int res = includeHandler(map, output_file, dir_paths, dir_pathsCounter);
+					if (res == ENOMEM)
+					{
+						return ENOMEM;
 					}
 					else if (res == 2)
 					{
@@ -603,26 +683,46 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **di
 				}
 				else if (strcmp(type, IF_STR) == 0)
 				{
+					if (!directiveInConditionValid)
+					{
+						continue;
+					}
+
 					conditionValid = ifHandler(map);
 				}
 				else if (strcmp(type, ELSE_STR) == 0)
 				{
+					// fprintf(stderr, "<>breakpoint<1> : condition: %d\n", conditionValid);
 					conditionValid = elseHandler(conditionValid);
+					directiveInConditionValid = conditionValid;
+					// fprintf(stderr, "<>breakpoint<2> : condition: %d\n", conditionValid);
 				}
 				else if (strcmp(type, ELIF_STR) == 0)
 				{
 					conditionValid = elifHandler(map, conditionValid);
+					directiveInConditionValid = conditionValid;
 				}
 				else if (strcmp(type, ENDIF_STR) == 0)
 				{
 					conditionValid = 1;
+					directiveInConditionValid = conditionValid;
 				}
 				else if (strcmp(type, IFDEF_STR) == 0)
 				{
+					if (!directiveInConditionValid)
+					{
+						continue;
+					}
+
 					conditionValid = ifdefHandler(map);
 				}
 				else if (strcmp(type, IFNDEF_STR) == 0)
 				{
+					if (!directiveInConditionValid)
+					{
+						continue;
+					}
+
 					conditionValid = ifndefHandler(map);
 				}
 
@@ -634,16 +734,25 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **di
 			}
 		}
 
-		if (skipLine || strcmp(buffer, "") == 0 || !conditionValid)
+		// fprintf(stderr, "<>breakpoint<3> : condition: %d\n", conditionValid);
+		if (skipLine || strcmp(buffer, "") == 0 || conditionValid == 0)
 		{
 			continue;
 		}
-
+		// fprintf(stderr, "<>breakpoint<4>\n");
 		// pointer to first " occurence
 		char *startPos = strstr(buffer, "\"");
 
 		char *startBuffer = (char *)calloc(1, 50);
+		if (startBuffer == NULL)
+		{
+			return ENOMEM;
+		}
 		char *endBuffer = (char *)calloc(1, 50);
+		if (endBuffer == NULL)
+		{
+			return ENOMEM;
+		}
 
 		char *res, *endPos; // res - copy of content between " "
 		// end - pointer to the second " occurence
@@ -659,7 +768,7 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **di
 		{
 			//fprintf(stderr, "MALLOC ERR 387\n");
 
-			exit(12);
+			return ENOMEM;
 		}
 		strcpy(bufferAux, buffer);
 		char *tok = strtok(bufferAux, ALL_DEL);
@@ -668,7 +777,10 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **di
 			char *res = search(map, tok);
 			if (res != NULL)
 			{
-				replace(buffer, tok, res);
+				if (replace(buffer, tok, res) == ENOMEM)
+				{
+					return ENOMEM;
+				}
 			}
 			tok = strtok(NULL, ALL_DEL);
 		}
@@ -702,13 +814,18 @@ int initArgs(
 		char **dir_paths,
 		int *dir_pathsCounter)
 {
+	int foundInputFile = 0;
+	int foundOutputFile = 0;
 	for (int i = 1; i < argc; i++)
 	{
 		char *current = argv[i];
 		if (strcmp(current, D_ARGUMENT) == 0)
 		{
 			char *DInput = argv[i + 1];
-			handleDInput(map, DInput);
+			if (handleDInput(map, DInput) == ENOMEM)
+			{
+				return ENOMEM;
+			}
 			i++;
 		}
 		else if (strncmp(current, D_ARGUMENT, 2) == 0)
@@ -722,7 +839,7 @@ int initArgs(
 			if (dir_path == NULL)
 			{
 				//fprintf(stderr, "Malloc err 450.\n");
-				return 12;
+				return ENOMEM;
 			}
 			(*dir_pathsCounter)++;
 			strcpy(dir_path, argv[i + 1]);
@@ -737,7 +854,7 @@ int initArgs(
 			if (dir_path == NULL)
 			{
 				//fprintf(stderr, "Malloc err 462.\n");
-				return 12;
+				return ENOMEM;
 			}
 			(*dir_pathsCounter)++;
 			strcpy(dir_path, current + 2);
@@ -765,31 +882,32 @@ int initArgs(
 		}
 		else if (*isInputFile == 0)
 		{
+			foundInputFile = 1;
 			*input_file = fopen(current, "r");
-			if (input_file == NULL)
+			if (*input_file == NULL)
 			{
-				//fprintf(stdout, "Input file <%s> failed to open.\n", current);
-				exit(0);
+				return 2;
 			} 
-
-			*isInputFile = 1;
+			else
+				*isInputFile = 1;
 
 		} 
 		else if (*isOutputFile == 0)
 		{
+			foundOutputFile = 1;
 			*output_file = fopen(current, "w");
-			if (output_file == NULL)
+			if (*output_file == NULL)
 			{
-				//fprintf(stdout, "Input file <%s> failed to open.\n", current);
-				exit(0);
+				return 2;
 			} 
-			
-			*isOutputFile = 1;
+			else
+				*isOutputFile = 1;
 		}
 		else
 		{
 			return 2;
 		}
+
 	}
 
 	return 1;
@@ -798,6 +916,11 @@ int initArgs(
 int main(int argc, char *argv[])
 {
 	HashMap map = mapInit();
+	if (map.items == NULL)
+	{
+		return ENOMEM;
+	}
+
 	FILE *input_file = stdin;
 	FILE *output_file = stdout;
 
@@ -808,7 +931,7 @@ int main(int argc, char *argv[])
 	if (dir_paths == NULL)
 	{
 		//fprintf(stderr, "Malloc err 509.\n");
-		return 12;
+		return ENOMEM;
 	}
 
 	for (int i = 0; i < 50; i++)
@@ -817,7 +940,7 @@ int main(int argc, char *argv[])
 		if (dir_paths[i] == NULL)
 		{
 			//fprintf(stderr, "Malloc err 515\n");
-			return 12;
+			return ENOMEM;
 		}
 	}
 
@@ -825,14 +948,15 @@ int main(int argc, char *argv[])
 	int dir_pathsCounter = 0;
 
 	int res = initArgs(argc, argv, &map, &input_file, &output_file, &isInputFile, &isOutputFile, dir_paths, &dir_pathsCounter);
-	if (res == 12)
+	if (res == ENOMEM)
 	{
-		return 12;
+		return ENOMEM;
 	}
 
-	if (isInputFile && input_file == stdin) {
+	if (res == 2) {
 		return 2;
 	}
+
 
 
 	if (isInputFile)
@@ -840,9 +964,9 @@ int main(int argc, char *argv[])
 		if (isOutputFile)
 		{
 			int res = handleInputFile(input_file, output_file, &map, dir_paths, dir_pathsCounter);
-			if (res == 12)
+			if (res == ENOMEM)
 			{
-				return 12;
+				return ENOMEM;
 			}
 			else if (res == 2)
 			{
@@ -852,9 +976,9 @@ int main(int argc, char *argv[])
 		else
 		{
 			int res = handleInputFile(input_file, stdout, &map, dir_paths, dir_pathsCounter);
-			if (res == 12)
+			if (res == ENOMEM)
 			{
-				return 12;
+				return ENOMEM;
 			}
 			else if (res == 2)
 			{
@@ -867,9 +991,9 @@ int main(int argc, char *argv[])
 		if (isOutputFile)
 		{
 			int res = handleInputFile(stdin, output_file, &map, dir_paths, dir_pathsCounter);
-			if (res == 12)
+			if (res == ENOMEM)
 			{
-				return 12;
+				return ENOMEM;
 			}
 			else if (res == 2)
 			{
@@ -879,9 +1003,9 @@ int main(int argc, char *argv[])
 		else
 		{
 			int res = handleInputFile(stdin, stdout, &map, dir_paths, dir_pathsCounter);
-			if (res == 12)
+			if (res == ENOMEM)
 			{
-				return 12;
+				return ENOMEM;
 			}
 			else if (res == 2)
 			{
@@ -909,7 +1033,7 @@ int main(int argc, char *argv[])
 	return 0;
 }
 
-void replace(
+int replace(
 		char *buffer,
 		char *toReplace,
 		char *replacement)
@@ -920,7 +1044,7 @@ void replace(
 	if (aux == NULL)
 	{
 		//fprintf(stdout, "Malloc err 42.\n");
-		exit(12);
+		return ENOMEM;
 	}
 
 	strcpy(aux, buffer);
@@ -932,4 +1056,5 @@ void replace(
 	strcat(buffer, aux + index + strlen(toReplace));
 
 	free(aux);
+	return 1;
 }
