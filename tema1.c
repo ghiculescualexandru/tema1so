@@ -186,9 +186,6 @@ int defineWithValue(HashMap *map, char *key, char *val)
 		return -ENOMEM;
 
 	strcpy(valBuffer, val);
-
-	// replace all values in define with
-	// existing values if any
 	tok = strtok(valBuffer, ALL_DEL);
 	while (tok != NULL) {
 		replacement = search(map, tok);
@@ -199,9 +196,6 @@ int defineWithValue(HashMap *map, char *key, char *val)
 		tok = strtok(NULL, ALL_DEL);
 	}
 
-	// insert or update key in map
-	// using the computed val (replaced with
-	// other map values if any)
 	if (search(map, key) == NULL) {
 		HashItem newItem;
 
@@ -226,8 +220,6 @@ int defineWithoutValue(HashMap *map, char *key)
 
 	strcpy(val, "");
 
-	// insert the key, value pair only
-	// if the key is not defined already
 	if (search(map, key) == NULL) {
 		HashItem newItem;
 
@@ -241,16 +233,11 @@ int defineWithoutValue(HashMap *map, char *key)
 	return 1;
 }
 
-/***********************/
-/*DIRECTIVE HANDLERS */
-/*********************/
-
 int defineHandler(HashMap *map)
 {
 	char *key = strtok(NULL, SPACE_DEL);
 	char *val = strtok(NULL, "\n");
 
-	// check if define has a key or the item is just defined
 	if (val) {
 		if (defineWithValue(map, key, val) == -ENOMEM)
 			return -ENOMEM;
@@ -344,14 +331,13 @@ int undefineHandler(HashMap *map)
 int includeHandler(HashMap *map, FILE *output_file, char **dir_paths,
 	int dir_pathsCounter)
 {
-	int foundHeader = 0, len; // Found the include file.
+	int foundHeader = 0, len;
 	char *fileNameBuffer, *end, *fileName;
 	FILE *header_file;
 
-	fileNameBuffer = strtok(NULL, SPACE_DEL); // text after #include
-	fileNameBuffer++; // ignore first " or first <
+	fileNameBuffer = strtok(NULL, SPACE_DEL);
+	fileNameBuffer++;
 
-	// compute the length of the file name
 	end = strstr(fileNameBuffer, "\"");
 	len = end - fileNameBuffer;
 
@@ -361,20 +347,15 @@ int includeHandler(HashMap *map, FILE *output_file, char **dir_paths,
 
 	memcpy(fileName, fileNameBuffer, len);
 
-	// if header file exists with the path after #include
 	header_file = fopen(fileName, "r");
 	if (header_file != NULL) {
 		foundHeader = 1;
-		// write the content of the header
 		if (handleInputFile(header_file, output_file, map, dir_paths,
 			dir_pathsCounter) == -ENOMEM)
 			return -ENOMEM;
 
 		fclose(header_file);
-	}
-	// else try to append it to all paths received as
-	// parameters or to the current path
-	else {
+	} else {
 		int j;
 		char *path;
 
@@ -411,14 +392,11 @@ int ifHandler(HashMap *map)
 {
 	char *cond = strtok(NULL, SPACE_DEL);
 
-	// check if condition is something
-	// defined in hashmap
 	char *res = search(map, cond);
 
 	if (res)
 		strcpy(cond, res);
 
-	// check if condition is valid
 	if (strcmp(cond, "0"))
 		return 1;
 	else
@@ -473,7 +451,6 @@ int quoteHandler(HashMap *map, char *buffer, char *startPos, char **endPos,
 	memcpy(startBuffer, buffer, startPos - buffer);
 	startBuffer[startPos - buffer] = '\0';
 
-	// search for ",
 	*endPos = strstr(buffer, "\",");
 
 	if (*endPos == NULL)
@@ -486,15 +463,10 @@ int quoteHandler(HashMap *map, char *buffer, char *startPos, char **endPos,
 		if (res == NULL)
 			return -ENOMEM;
 
-		// save in res the content between " "
 		memcpy(*res, startPos + 1, *endPos - (startPos + 1));
-		// //fprintf(stderr, "res: %s\n", res);
 
-		// save in endBuffer the content after ""
 		strcpy(endBuffer, *endPos);
 
-		// replace in the content after "" all occurences
-		// with hashmap values
 		endendAux = (char *) calloc(1, strlen(endBuffer) + 1);
 		if (endendAux == NULL)
 			return -ENOMEM;
@@ -538,10 +510,9 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map,
 
 	while (fgets(buffer, BUF_LEN - 1, input_file)) {
 		int isDirective = 1, skipLine = 0,
-		directiveInConditionValid, i; // To remember if there is a directive in this line.
+		directiveInConditionValid, i;
 		char *startPos, *startBuffer, *endBuffer, *res,
 		*endPos, *bufferAux, *tok;
-		// Skip the print of the line.
 
 		buffer[strcspn(buffer, "\n")] = 0;
 
@@ -554,7 +525,7 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map,
 			if (currChar == HASH && isDirective) {
 				char *bufferAux, *afterHashtag, *type;
 
-				skipLine = 1; // This line won't be printed.
+				skipLine = 1;
 
 				bufferAux = (char *) calloc(1,
 					strlen(buffer) + 1);
