@@ -90,9 +90,9 @@ int hashItemInit(HashItem *item, char key[KEY_SIZE], char *value)
 
 void insert(HashMap *map, HashItem item)
 {
-	int itemExists = 0;
-
-	for (int i = 0; i < map->currentSize; i++)
+	int itemExists = 0, i;
+	
+	for (i = 0; i < map->currentSize; i++)
 	{
 		HashItem currItem = map->items[i];
 		if (strcmp(currItem.key, item.key) == 0)
@@ -110,7 +110,9 @@ void insert(HashMap *map, HashItem item)
 
 void put(HashMap *map, char *key, char *val)
 {
-	for (int i = 0; i < map->currentSize; i++)
+	int i;
+	
+	for (i = 0; i < map->currentSize; i++)
 	{
 		HashItem currItem = map->items[i];
 		if (strcmp(currItem.key, key) == 0)
@@ -122,7 +124,9 @@ void put(HashMap *map, char *key, char *val)
 
 char *search(HashMap *map, char key[KEY_SIZE])
 {
-	for (int i = 0; i < map->currentSize; i++)
+	int i;
+	
+	for (i = 0; i < map->currentSize; i++)
 	{
 		HashItem currItem = map->items[i];
 		if (strcmp(currItem.key, key) == 0)
@@ -136,12 +140,15 @@ char *search(HashMap *map, char key[KEY_SIZE])
 
 void delete (HashMap *map, char key[KEY_SIZE])
 {
-	for (int i = 0; i < map->currentSize; i++)
+	int i, j;
+	HashItem currItem;
+	
+	for (i = 0; i < map->currentSize; i++)
 	{
-		HashItem currItem = map->items[i];
+		currItem = map->items[i];
 		if (strcmp(currItem.key, key) == 0)
 		{
-			for (int j = i; j < map->currentSize; j++)
+			for (j = i; j < map->currentSize; j++)
 			{
 				map->items[j] = map->items[j + 1];
 			}
@@ -193,6 +200,7 @@ int handleDInput(HashMap *map, char *DInput)
 
 int defineWithValue(HashMap *map, char *key, char *val)
 {
+	char *tok, *replacement;
 	// for define in define
 
 	// using a buffer for strtok
@@ -205,10 +213,10 @@ int defineWithValue(HashMap *map, char *key, char *val)
 
 	// replace all values in define with
 	// existing values if any
-	char *tok = strtok(valBuffer, ALL_DEL);
+	tok = strtok(valBuffer, ALL_DEL);
 	while (tok != NULL)
 	{
-		char *replacement = search(map, tok);
+		replacement = search(map, tok);
 		if (replacement != NULL)
 		{
 			if (replace(val, tok, replacement) == ENOMEM)
@@ -300,13 +308,15 @@ int defineHandler(HashMap *map)
 
 int removeWhiteSpaces(char *buffer)
 {
-	char *aux = (char *)calloc(1, strlen(buffer) + 1);
+	int i = 0;
+	char *aux;
+	
+	aux = (char *)calloc(1, strlen(buffer) + 1);
 	if (aux == NULL) {
 		return ENOMEM;
 	}
 
 	strcpy(aux, buffer);
-	int i = 0;
 	for (; i < strlen(buffer); i++)
 	{
 		if (aux[i] != ' ')
@@ -320,7 +330,9 @@ int removeWhiteSpaces(char *buffer)
 
 int multiLineDefineHandler(HashMap *map, FILE *input_file, char *buffer)
 {
-	char *multiLineBuffer = (char *)calloc(1, BUF_LEN);
+	char *tok, *key, *val, *valBuffer, *multiLineBuffer;
+
+	multiLineBuffer = (char *)calloc(1, BUF_LEN);
 	if (multiLineBuffer == NULL)
 	{
 		return ENOMEM;
@@ -343,15 +355,15 @@ int multiLineDefineHandler(HashMap *map, FILE *input_file, char *buffer)
 		}
 	}
 
-	char *tok = strtok(multiLineBuffer, ALL_DEL);
-	char *key = strtok(NULL, SPACE_DEL);
-	char *val = (char *)calloc(1, 50);
+	tok = strtok(multiLineBuffer, ALL_DEL);
+	key = strtok(NULL, SPACE_DEL);
+	val = (char *)calloc(1, 50);
 	if (val == NULL)
 	{
 		return ENOMEM;
 	}
 
-	char *valBuffer = strtok(NULL, SPACE_DEL);
+	valBuffer = strtok(NULL, SPACE_DEL);
 	while (valBuffer != NULL)
 	{
 		if (strcmp(valBuffer, "\\") == 0)
@@ -388,16 +400,18 @@ int undefineHandler(HashMap *map)
 
 int includeHandler(HashMap *map, FILE *output_file, char **dir_paths, int dir_pathsCounter)
 {
-	int foundHeader = 0; // Found the include file.
-
-	char *fileNameBuffer = strtok(NULL, SPACE_DEL); // text after #include
+	int foundHeader = 0, len; // Found the include file.
+	char *fileNameBuffer, *end, *fileName;
+	FILE *header_file;
+	
+	fileNameBuffer = strtok(NULL, SPACE_DEL); // text after #include
 	fileNameBuffer++;																// ignore first " or first <
 
 	// compute the length of the file name
-	char *end = strstr(fileNameBuffer, "\"");
-	int len = end - fileNameBuffer;
+	end = strstr(fileNameBuffer, "\"");
+	len = end - fileNameBuffer;
 
-	char *fileName = (char *)calloc(len + 1, sizeof(char));
+	fileName = (char *)calloc(len + 1, sizeof(char));
 	if (fileName == NULL)
 	{
 		return ENOMEM;
@@ -405,7 +419,7 @@ int includeHandler(HashMap *map, FILE *output_file, char **dir_paths, int dir_pa
 	memcpy(fileName, fileNameBuffer, len);
 
 	// if header file exists with the path after #include
-	FILE *header_file = fopen(fileName, "r");
+	header_file = fopen(fileName, "r");
 	if (header_file != NULL)
 	{
 		foundHeader = 1;
@@ -420,9 +434,12 @@ int includeHandler(HashMap *map, FILE *output_file, char **dir_paths, int dir_pa
 	// parameters or to the current path
 	else
 	{
-		for (int j = 0; j <= dir_pathsCounter; j++)
+		int j;
+		char *path;
+		
+		for (j = 0; j <= dir_pathsCounter; j++)
 		{
-			char *path = (char *)calloc(1, 50);
+			path = (char *)calloc(1, 50);
 			if (path == NULL)
 			{
 				return ENOMEM;
@@ -551,6 +568,8 @@ int quoteHandler(HashMap *map, char *buffer, char *startPos, char **endPos, char
 
 	if (*endPos)
 	{
+		char *endendAux, *endtok;
+	
 		*res = (char *)calloc(sizeof(char), strlen(startPos) + 1);
 		if (res == NULL)
 		{
@@ -565,16 +584,17 @@ int quoteHandler(HashMap *map, char *buffer, char *startPos, char **endPos, char
 
 		// replace in the content after "" all occurences
 		// with hashmap values
-		char *endendAux = (char *)calloc(1, strlen(endBuffer) + 1);
+		endendAux = (char *)calloc(1, strlen(endBuffer) + 1);
 		if (endendAux == NULL)
 		{
 			return ENOMEM;
 		}
 		strcpy(endendAux, endBuffer);
-		char *endtok = strtok(endendAux, ALL_DEL);
+		endtok = strtok(endendAux, ALL_DEL);
 		while (endtok != NULL)
 		{
-			char *endres = search(map, endtok);
+			char *endres;
+			endres = search(map, endtok);
 			if (endres != NULL)
 			{
 				if(replace(endBuffer, endtok, endres) == ENOMEM)
@@ -597,6 +617,11 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **di
 
 	while (fgets(buffer, BUF_LEN - 1, input_file))
 	{
+		int isDirective = 1, skipLine = 0, directiveInConditionValid, i; // To remember if there is a directive in this line.
+		char *startPos, *startBuffer, *endBuffer, *res, *endPos, *bufferAux, *tok;
+		// Skip the print of the line.
+		 
+		// int foundHeader = 0; // Found an include directive.
 		// fprintf(stderr, "======================\n");
 		// fprintf(stderr, "at line: %s", buffer);
 		// fprintf(stderr, "condition: %s\n", (conditionValid) ? "true" : "false");
@@ -607,30 +632,28 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **di
 
 		buffer[strcspn(buffer, "\n")] = 0;
 
-		int isDirective = 1; // To remember if there is a directive in this line.
-		int skipLine = 0;		 // Skip the print of the line.
-		// int foundHeader = 0; // Found an include directive.
+		directiveInConditionValid = conditionValid;
 
-		int directiveInConditionValid = conditionValid;
-
-		for (int i = 0; i < strlen(buffer); i++)
+		for (i = 0; i < strlen(buffer); i++)
 		{
-
-
-			char currChar = buffer[i];
+			char currChar;
+			
+			currChar = buffer[i];
 			if (currChar == HASH && isDirective)
 			{
+				char *bufferAux, *afterHashtag, *type;
+			
 				skipLine = 1; // This line won't be printed.
 
-				char *bufferAux = (char *)calloc(1, strlen(buffer) + 1);
+				bufferAux = (char *)calloc(1, strlen(buffer) + 1);
 				if (bufferAux == NULL)
 				{
 					return ENOMEM;
 				}
 				strcpy(bufferAux, buffer);
-				char *afterHashtag = bufferAux + 1;
+				afterHashtag = bufferAux + 1;
 
-				char *type = strtok(afterHashtag, SPACE_DEL);
+				type = strtok(afterHashtag, SPACE_DEL);
 				if (strcmp(type, DEFINE_STR) == 0)
 				{
 					if (!directiveInConditionValid)
@@ -666,12 +689,14 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **di
 				}
 				else if (strcmp(type, INCLUDE_STR) == 0)
 				{
+					int res;
+				
 					if (!directiveInConditionValid)
 					{
 						continue;
 					}
 
-					int res = includeHandler(map, output_file, dir_paths, dir_pathsCounter);
+					res = includeHandler(map, output_file, dir_paths, dir_pathsCounter);
 					if (res == ENOMEM)
 					{
 						return ENOMEM;
@@ -741,29 +766,30 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **di
 		}
 		// fprintf(stderr, "<>breakpoint<4>\n");
 		// pointer to first " occurence
-		char *startPos = strstr(buffer, "\"");
+		
+		startPos = strstr(buffer, "\"");
 
-		char *startBuffer = (char *)calloc(1, 50);
+		startBuffer = (char *)calloc(1, 50);
 		if (startBuffer == NULL)
 		{
 			return ENOMEM;
 		}
-		char *endBuffer = (char *)calloc(1, 50);
+		endBuffer = (char *)calloc(1, 50);
 		if (endBuffer == NULL)
 		{
 			return ENOMEM;
 		}
 
-		char *res, *endPos; // res - copy of content between " "
+		//char *res, *endPos; // res - copy of content between " "
 		// end - pointer to the second " occurence
-		int closingType = 1; // ",
+		// int closingType = 1; // ",
 
 		if (startPos)
 		{
 			quoteHandler(map, buffer, startPos, &endPos, startBuffer, endBuffer, &res);
 		}
 
-		char *bufferAux = (char *)calloc(1, strlen(buffer) + 1);
+		bufferAux = (char *)calloc(1, strlen(buffer) + 1);
 		if (bufferAux == NULL)
 		{
 			//fprintf(stderr, "MALLOC ERR 387\n");
@@ -771,10 +797,11 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map, char **di
 			return ENOMEM;
 		}
 		strcpy(bufferAux, buffer);
-		char *tok = strtok(bufferAux, ALL_DEL);
+		tok = strtok(bufferAux, ALL_DEL);
 		while (tok != NULL)
 		{
-			char *res = search(map, tok);
+			char *res;
+			res = search(map, tok);
 			if (res != NULL)
 			{
 				if (replace(buffer, tok, res) == ENOMEM)
@@ -816,7 +843,9 @@ int initArgs(
 {
 	int foundInputFile = 0;
 	int foundOutputFile = 0;
-	for (int i = 1; i < argc; i++)
+	int i;
+	
+	for (i = 1; i < argc; i++)
 	{
 		char *current = argv[i];
 		if (strcmp(current, D_ARGUMENT) == 0)
@@ -915,26 +944,30 @@ int initArgs(
 
 int main(int argc, char *argv[])
 {
+	FILE *input_file, *output_file;
 	HashMap map = mapInit();
+	int isInputFile, isOutputFile, res, i, dir_pathsCounter;
+	char **dir_paths;
+	
 	if (map.items == NULL)
 	{
 		return ENOMEM;
 	}
 
-	FILE *input_file = stdin;
-	FILE *output_file = stdout;
+	input_file = stdin;
+	output_file = stdout;
 
-	int isInputFile = 0;
-	int isOutputFile = 0;
+	isInputFile = 0;
+	isOutputFile = 0;
 
-	char **dir_paths = (char **)calloc(50, sizeof(char *));
+	dir_paths = (char **)calloc(50, sizeof(char *));
 	if (dir_paths == NULL)
 	{
 		//fprintf(stderr, "Malloc err 509.\n");
 		return ENOMEM;
 	}
 
-	for (int i = 0; i < 50; i++)
+	for (i = 0; i < 50; i++)
 	{
 		dir_paths[i] = (char *)calloc(50, sizeof(char));
 		if (dir_paths[i] == NULL)
@@ -945,9 +978,9 @@ int main(int argc, char *argv[])
 	}
 
 	strcpy(dir_paths[0], "./_test/inputs/");
-	int dir_pathsCounter = 0;
+	dir_pathsCounter = 0;
 
-	int res = initArgs(argc, argv, &map, &input_file, &output_file, &isInputFile, &isOutputFile, dir_paths, &dir_pathsCounter);
+	res = initArgs(argc, argv, &map, &input_file, &output_file, &isInputFile, &isOutputFile, dir_paths, &dir_pathsCounter);
 	if (res == ENOMEM)
 	{
 		return ENOMEM;
@@ -1017,13 +1050,13 @@ int main(int argc, char *argv[])
 	fclose(input_file);
 	fclose(output_file);
 
-	for (int i = 0; i < map.currentSize; i++)
+	for (i = 0; i < map.currentSize; i++)
 	{
 		free(map.items[i].value);
 	}
 	free(map.items);
 
-	for (int i = 0; i < 50; i++)
+	for (i = 0; i < 50; i++)
 	{
 		free(dir_paths[i]);
 	}
@@ -1038,9 +1071,12 @@ int replace(
 		char *toReplace,
 		char *replacement)
 {
-	char *occurence = strstr(buffer, toReplace);
+	char *occurence, *aux;
+	int index;
+	
+	occurence = strstr(buffer, toReplace);
 
-	char *aux = (char *)calloc(1, BUF_LEN + 1);
+	aux = (char *)calloc(1, BUF_LEN + 1);
 	if (aux == NULL)
 	{
 		//fprintf(stdout, "Malloc err 42.\n");
@@ -1049,7 +1085,7 @@ int replace(
 
 	strcpy(aux, buffer);
 
-	int index = occurence - buffer;
+	index = occurence - buffer;
 	buffer[index] = '\0';
 
 	strcat(buffer, replacement);
