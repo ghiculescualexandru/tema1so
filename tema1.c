@@ -180,8 +180,6 @@ int defineWithValue(HashMap *map, char *key, char *val)
 {
 	char *tok, *replacement;
 	// for define in define
-
-	// using a buffer for strtok
 	char *valBuffer = (char *)calloc(1, BUF_LEN);
 
 	if (valBuffer == NULL)
@@ -539,7 +537,8 @@ int handleInputFile(FILE *input_file, FILE *output_file, HashMap *map,
 	int conditionValid = 1;
 
 	while (fgets(buffer, BUF_LEN - 1, input_file)) {
-		int isDirective = 1, skipLine = 0, directiveInConditionValid, i; // To remember if there is a directive in this line.
+		int isDirective = 1, skipLine = 0,
+		directiveInConditionValid, i; // To remember if there is a directive in this line.
 		char *startPos, *startBuffer, *endBuffer, *res,
 		*endPos, *bufferAux, *tok;
 		// Skip the print of the line.
